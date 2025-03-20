@@ -9,7 +9,7 @@ function AuthProvider({children}) {
 
     const user = useUser();
     const CreateUser=useMutation(api.users.CreateUser);
-    const {userData, setUserData}=useState();
+    const [userData, setUserData]=useState();
     useEffect(() => {
         console.log(user)
         user&&CreateNewUser();
