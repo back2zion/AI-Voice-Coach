@@ -11,6 +11,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react'
+import ChatBox from './_components/ChatBox';
 const RecordRTC = dynamic(() => import('recordrtc'), { ssr: false})
 // import RecordRTC from 'recordrtc';
 
@@ -23,7 +24,14 @@ function DiscussionRoom() {
     const realtimeTranscriber = useRef(null);
     const stream = useRef(null);
     const [transcribe, setTranscribe] = useState('');
-    const [conversation, setConversation] = useState([]);
+    const [conversation, setConversation] = useState([{
+        role:'assistant',
+        content:'Hi'
+    },
+    {
+        role:'user',
+        content:'Hello'
+    }]);
     const [loading,setLoading] = useState(false);
     let silenceTimeout;
     let texts = {};
@@ -57,11 +65,13 @@ function DiscussionRoom() {
                 }]);
 
                 // Calling AI text Model to Get Response
+                const lastTwoMsg=conversation.slice(-2);
                 const aiResp=await AIModel(DiscussionRoomData.topic,
                     DiscussionRoomData.coachingOption,
-                    transcript.text
+                    lastTwoMsg
                 );
                 console.log(aiResp);
+                setConversation(prev=>[...prev,aiResp])
             }
 
             texts[transcript.audio_start] = transcript.text;
@@ -134,6 +144,24 @@ function DiscussionRoom() {
         }
     }
 
+    useEffect(() => {
+        async function fetchData() {
+            if (conversation[conversation.length - 1].role == 'user'){
+                // Calling AI text Model to Get Response
+                const lastTwoMsg = conversation.slice(-2);
+                const aiResp = await AIModel(
+                    DiscussionRoomData.topic,
+                    DiscussionRoomData.coachingOption,
+                    lastTwoMsg
+                );
+                console.log(aiResp);
+                setConversation(prev => [...prev, aiResp])
+            }
+            
+        }
+        fetchData()
+    }, [conversation])
+
     const disconnect = async(e) => {
         e.preventDefault();
         setLoading(true);
@@ -204,14 +232,7 @@ function DiscussionRoom() {
                     </div>
                 </div>
                 <div>
-                    <div>
-                        <div className='h-[60vh] bg-secondary rounded-4xl
-                        flex flex-col justify-center items-center relative
-                        '>
-                            <h2>Chat Section</h2>
-                        </div>
-                        <h2 className='mt-4 text-gray-500 text-sm'>At the end of your conversation we will automatically generate feedback/notes from your conversation</h2>
-                    </div>
+                    <ChatBox conversation={conversation} />
                 </div>
             </div>
 
