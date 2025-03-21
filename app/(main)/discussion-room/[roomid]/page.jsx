@@ -5,7 +5,7 @@ import { AIModel, ConvertTextToSpeech, getToken } from '@/services/GlobalService
 import { CoachingExpert } from '@/services/Options';
 import { UserButton } from '@stackframe/stack';
 import { RealtimeTranscriber } from 'assemblyai';
-import { useQuery } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { Loader2Icon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -27,6 +27,7 @@ function DiscussionRoom() {
     const [conversation, setConversation] = useState([]);
     const [loading,setLoading] = useState(false);
     const [audioUrl,setAudioUrl]=useState();
+    const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
     let silenceTimeout;
     let texts = {};
     
@@ -161,30 +162,39 @@ function DiscussionRoom() {
     const disconnect = async(e) => {
         e.preventDefault();
         setLoading(true);
-        // Fix: Check if realtimeTranscriber exists and properly close it
-        if (realtimeTranscriber.current) {
-            try {
-                // https://www.assemblyai.com/docs/getting-started/real-time-transcription
-                await realtimeTranscriber.current.close();
-            } catch (err) {
-                console.error("Error disconnecting from AssemblyAI:", err);
+        try {
+            // Fix: Check if realtimeTranscriber exists and properly close it
+            if (realtimeTranscriber.current) {
+                try {
+                    // https://www.assemblyai.com/docs/getting-started/real-time-transcription
+                    await realtimeTranscriber.current.close();
+                } catch (err) {
+                    console.error("Error disconnecting from AssemblyAI:", err);
+                }
             }
-        }
-        
-        if (recorder.current) {
-            try {
-                recorder.current.stopRecording(() => {
-                    console.log("Recording stopped");
+            
+            if (recorder.current) {
+                try {
+                    recorder.current.stopRecording(() => {
+                        console.log("Recording stopped");
+                        cleanupResources();
+                    });
+                } catch (err) {
+                    console.error("Error stopping recording:", err);
                     cleanupResources();
-                });
-            } catch (err) {
-                console.error("Error stopping recording:", err);
+                }
+            } else {
                 cleanupResources();
             }
-        } else {
-            cleanupResources();
+            await UpdateConversation({
+                id: DiscussionRoomData._id,
+                conversation: conversation
+            });
+        } catch (err) {
+            console.error("Error updating conversation:", err);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     }
     
     // Helper function to clean up resources
