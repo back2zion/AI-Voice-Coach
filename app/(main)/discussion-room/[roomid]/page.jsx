@@ -1,12 +1,17 @@
 "use client"
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
+import { getToken } from '@/services/GlobalServices';
 import { CoachingExpert } from '@/services/Options';
 import { UserButton } from '@stackframe/stack';
+import { RealtimeTranscriber } from 'assemblyai';
 import { useQuery } from 'convex/react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react'
+const RecordRTC = dynamic(() => import('recordrtc'), { ssr: false})
+// import RecordRTC from 'recordrtc';
 
 function DiscussionRoom() {
     const { roomid } = useParams();
@@ -14,8 +19,12 @@ function DiscussionRoom() {
     const [expert, setExpert] = useState();
     const [enableMic, setEnableMic] = useState(false);
     const recorder = useRef(null);
+    const realtimeTranscriber = useRef(null);
     const stream = useRef(null);
+    const [transcribe, setTranscribe] = useState('');
+    const [conversation, setConversation] = useState([]);
     let silenceTimeout;
+    let texts = {};
     
     useEffect(() => {
         if(DiscussionRoomData){
@@ -27,6 +36,30 @@ function DiscussionRoom() {
 
     const connectToServer = async () => {
         setEnableMic(true);
+
+        // Init Assembly AI
+        realtimeTranscriber.current = new RealtimeTranscriber({
+            token: await getToken(),
+            sample_rate:16_000
+        })
+
+        realtimeTranscriber.current.on('transcript',async(transcript)=>{
+            console.log(transcript);
+            let msg = '';
+            texts[transcript.audio_start] = transcript.text;
+            const keys=Object.keys(texts);
+            keys.sort((a,b)=>a-b);
+
+            for (const key of keys){
+                if (texts[key]){
+                    msg+=`${texts[key]}`
+                }
+            }
+
+            setTranscribe(msg);
+        })
+
+        await realtimeTranscriber.current.connect();
         if (typeof window !== "undefined" && typeof navigator !== "undefined") {
             try {
                 // First, get the media stream
@@ -52,10 +85,11 @@ function DiscussionRoom() {
                     bufferSize: 4096,
                     audioBitsPerSecond: 128000,
                     ondataavailable: async (blob) => {
-                        // Reset the silence detection timer on audio input
+                        if (!realtimeTranscriber.current) return;                        // Reset the silence detection timer on audio input
                         clearTimeout(silenceTimeout);
                         const buffer = await blob.arrayBuffer();
                         console.log(buffer);
+                        realtimeTranscriber.current.sendAudio(buffer);
                         // Restart the silence detection timer
                         silenceTimeout = setTimeout(() => {
                             console.log("User stopped talking");
@@ -81,19 +115,23 @@ function DiscussionRoom() {
         }
     }
 
-    const disconnect = (e) => {
+    const disconnect = async(e) => {
         e.preventDefault();
+        
+        // Fix: Check if realtimeTranscriber exists and properly close it
+        if (realtimeTranscriber.current) {
+            try {
+                // https://www.assemblyai.com/docs/getting-started/real-time-transcription
+                await realtimeTranscriber.current.close();
+            } catch (err) {
+                console.error("Error disconnecting from AssemblyAI:", err);
+            }
+        }
         
         if (recorder.current) {
             try {
                 recorder.current.stopRecording(() => {
                     console.log("Recording stopped");
-                    
-                    // Optional: get the recording blob
-                    // const blob = recorder.current.getBlob();
-                    // console.log("Recording blob:", blob);
-                    
-                    // Clean up
                     cleanupResources();
                 });
             } catch (err) {
@@ -153,6 +191,10 @@ function DiscussionRoom() {
                         <h2 className='mt-4 text-gray-500 text-sm'>At the end of your conversation we will automatically generate feedback/notes from your conversation</h2>
                     </div>
                 </div>
+            </div>
+
+            <div>
+                <h2>{transcribe}</h2>
             </div>
         </div>
     )
