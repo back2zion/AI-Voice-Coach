@@ -1,7 +1,7 @@
 "use client"
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
-import { AIModel, getToken } from '@/services/GlobalServices';
+import { AIModel, ConvertTextToSpeech, getToken } from '@/services/GlobalServices';
 import { CoachingExpert } from '@/services/Options';
 import { UserButton } from '@stackframe/stack';
 import { RealtimeTranscriber } from 'assemblyai';
@@ -24,15 +24,9 @@ function DiscussionRoom() {
     const realtimeTranscriber = useRef(null);
     const stream = useRef(null);
     const [transcribe, setTranscribe] = useState('');
-    const [conversation, setConversation] = useState([{
-        role:'assistant',
-        content:'Hi'
-    },
-    {
-        role:'user',
-        content:'Hello'
-    }]);
+    const [conversation, setConversation] = useState([]);
     const [loading,setLoading] = useState(false);
+    const [audioUrl,setAudioUrl]=useState();
     let silenceTimeout;
     let texts = {};
     
@@ -148,13 +142,15 @@ function DiscussionRoom() {
         async function fetchData() {
             if (conversation[conversation.length - 1].role == 'user'){
                 // Calling AI text Model to Get Response
-                const lastTwoMsg = conversation.slice(-2);
+                const lastTwoMsg = conversation.slice(-8);
                 const aiResp = await AIModel(
                     DiscussionRoomData.topic,
                     DiscussionRoomData.coachingOption,
                     lastTwoMsg
-                );
-                console.log(aiResp);
+                    );
+                const url=await ConvertTextToSpeech(aiResp.content,DiscussionRoomData.expertName);
+                console.log(url);
+                setAudioUrl(url);
                 setConversation(prev => [...prev, aiResp])
             }
             
@@ -217,6 +213,8 @@ function DiscussionRoom() {
                             className='h-[80px] w-[80px] rounded-full object-cover animate-pulse'
                         />
                         <h2 className='text-gray-500'>{expert?.name}</h2>
+
+                        <audio src={audioUrl} type='audio/mp3' autoPlay />
                         <div className='p-5 bg-gray-200 px-10 rounded-lg absolute bottom-10 right-10'>
                             <UserButton />
                         </div>

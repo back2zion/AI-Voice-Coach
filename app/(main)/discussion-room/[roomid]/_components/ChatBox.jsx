@@ -4,11 +4,11 @@ function ChatBox({conversation}) {
   return (
     <div>
         <div className='h-[60vh] bg-secondary rounded-xl
-        flex flex-col relative p-4 overflow-auto scrollbar-hide
+        flex flex-col relative p-4 overflow-auto
         '>
             {/* <div> */}
                 {conversation.map((item,index)=>(
-                    <div className={`flex ${item.role == 'user' && 'justify-end'}`}>
+                    <div key={index} className={`flex ${item.role == 'user' && 'justify-end'}`}>
                         {item.role == 'assistant' ?
                             <h2 className='p-1 px-2 bg-primary mt-2 text-white inline-block rounded-md'>{item.content}</h2>
                             :
