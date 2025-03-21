@@ -25,7 +25,7 @@ function Credits() {
                 className='rounded-full'
                 />
                 <div>
-                    <h2 className=''text-lg font-bold>{user?.displayName}</h2>
+                    <h2 className='text-lg font-bold'>{user?.displayName}</h2>
                     <h2 className='text-gray-500'>{user?.primaryEmail}</h2>
                 </div>
             </div>
