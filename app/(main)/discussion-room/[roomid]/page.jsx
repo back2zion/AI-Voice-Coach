@@ -23,12 +23,14 @@ function DiscussionRoom() {
     const recorder = useRef(null);
     const realtimeTranscriber = useRef(null);
     const stream = useRef(null);
-    const [transcribe, setTranscribe] = useState('');
+    const [transcribe, setTranscribe] = useState();
     const [conversation, setConversation] = useState([]);
     const [loading,setLoading] = useState(false);
     const [audioUrl,setAudioUrl]=useState();
+    const [enableFeedbackNotes,setEnableFeedbackNotes] = useState(false);
     const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
     let silenceTimeout;
+    let waitForPause;
     let texts = {};
     
     useEffect(() => {
@@ -40,7 +42,6 @@ function DiscussionRoom() {
     }, [DiscussionRoomData]);
 
     const connectToServer = async () => {
-        setEnableMic(true);
         setLoading(true);
         // Init Assembly AI
         realtimeTranscriber.current = new RealtimeTranscriber({
@@ -84,6 +85,8 @@ function DiscussionRoom() {
 
         await realtimeTranscriber.current.connect();
         setLoading(false);
+        setEnableMic(true);
+        toast('Connected...')
         if (typeof window !== "undefined" && typeof navigator !== "undefined") {
             try {
                 // First, get the media stream
@@ -186,6 +189,8 @@ function DiscussionRoom() {
             } else {
                 cleanupResources();
             }
+            setEnableMic(false);
+            toast('Disconnected!')
             await UpdateConversation({
                 id: DiscussionRoomData._id,
                 conversation: conversation
@@ -194,6 +199,7 @@ function DiscussionRoom() {
             console.error("Error updating conversation:", err);
         } finally {
             setLoading(false);
+            setEnableFeedbackNotes(true);
         }
     }
     
@@ -240,7 +246,10 @@ function DiscussionRoom() {
                     </div>
                 </div>
                 <div>
-                    <ChatBox conversation={conversation} />
+                    <ChatBox conversation={conversation} 
+                    enableFeedbackNotes={enableFeedbackNotes} 
+                    coachingOption={DiscussionRoomData?.coachingOption}
+                    />
                 </div>
             </div>
 

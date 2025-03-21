@@ -13,6 +13,7 @@ export default defineSchema({
         coachingOption:v.string(),
         topic:v.string(),
         expertName:v.string(),
-        conversation:v.optional(v.any())
+        conversation:v.optional(v.any()),
+        summery:v.optional(v.any())
     })
 });

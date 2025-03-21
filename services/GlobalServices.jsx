@@ -26,8 +26,24 @@ export const AIModel=async(topic,coachingOption,lastTwoConversation)=>{
             ...lastTwoConversation
         ],
       })
-      console.log(completion.choices[0].message)
-      return completion.choices[0].message;
+      // console.log(completion.choices[0].message)
+      return completion?.choices[0].message;
+}
+
+export const AIModelToGenerateFeedbackAndNotes=async(coachingOption,conversation)=>{
+
+    const option=CoachingOptions.find((item)=>item.name==coachingOption);
+    const PROMPT=(option.summeryPrompt);
+
+    const completion = await openai.chat.completions.create({
+        model: "google/gemma-3-1b-it:free",
+        messages: [
+            ...conversation,
+            {role:'assistant',content:PROMPT},
+        ],
+      })
+      // console.log(completion.choices[0].message)
+      return completion?.choices[0].message;
 }
 
 export const ConvertTextToSpeech=async(text,expertName)=>{

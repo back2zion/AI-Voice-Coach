@@ -27,6 +27,7 @@ export default function RootLayout({ children }) {
       ><StackProvider app={stackServerApp}><StackTheme>
         <Provider>
           {children}
+          <Toaster />
         </Provider>
       </StackTheme></StackProvider></body>
     </html>
