@@ -1,11 +1,12 @@
 "use client"
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
-import { getToken } from '@/services/GlobalServices';
+import { AIModel, getToken } from '@/services/GlobalServices';
 import { CoachingExpert } from '@/services/Options';
 import { UserButton } from '@stackframe/stack';
 import { RealtimeTranscriber } from 'assemblyai';
 import { useQuery } from 'convex/react';
+import { Loader2Icon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
@@ -23,6 +24,7 @@ function DiscussionRoom() {
     const stream = useRef(null);
     const [transcribe, setTranscribe] = useState('');
     const [conversation, setConversation] = useState([]);
+    const [loading,setLoading] = useState(false);
     let silenceTimeout;
     let texts = {};
     
@@ -36,7 +38,7 @@ function DiscussionRoom() {
 
     const connectToServer = async () => {
         setEnableMic(true);
-
+        setLoading(true);
         // Init Assembly AI
         realtimeTranscriber.current = new RealtimeTranscriber({
             token: await getToken(),
@@ -46,6 +48,22 @@ function DiscussionRoom() {
         realtimeTranscriber.current.on('transcript',async(transcript)=>{
             console.log(transcript);
             let msg = '';
+
+            if (transcript.message_type=='FinalTranscript')
+            {
+                setConversation(prev=>[...prev,{
+                    role:'user',
+                    content:transcript.text
+                }]);
+
+                // Calling AI text Model to Get Response
+                const aiResp=await AIModel(DiscussionRoomData.topic,
+                    DiscussionRoomData.coachingOption,
+                    transcript.text
+                );
+                console.log(aiResp);
+            }
+
             texts[transcript.audio_start] = transcript.text;
             const keys=Object.keys(texts);
             keys.sort((a,b)=>a-b);
@@ -60,6 +78,7 @@ function DiscussionRoom() {
         })
 
         await realtimeTranscriber.current.connect();
+        setLoading(false);
         if (typeof window !== "undefined" && typeof navigator !== "undefined") {
             try {
                 // First, get the media stream
@@ -117,7 +136,7 @@ function DiscussionRoom() {
 
     const disconnect = async(e) => {
         e.preventDefault();
-        
+        setLoading(true);
         // Fix: Check if realtimeTranscriber exists and properly close it
         if (realtimeTranscriber.current) {
             try {
@@ -141,6 +160,7 @@ function DiscussionRoom() {
         } else {
             cleanupResources();
         }
+        setLoading(false);
     }
     
     // Helper function to clean up resources
@@ -175,9 +195,11 @@ function DiscussionRoom() {
                     </div>
                     <div className='mt-5 flex justify-center items-center cursor-pointer'>
                         {!enableMic ?
-                            <Button onClick={connectToServer}>Connect</Button>
+                            <Button className='cursor-pointer' onClick={connectToServer} disabled={loading}> {loading&&<Loader2Icon className='animate-spin' />} Connect</Button>
                             :
-                            <Button variant='destructive' onClick={disconnect}>Disconnect</Button>
+                            <Button className='cursor-pointer' variant='destructive' onClick={disconnect} disabled={loading}>
+                                {loading&&<Loader2Icon className='animate-spin' />}
+                                Disconnect</Button>
                         }
                     </div>
                 </div>
