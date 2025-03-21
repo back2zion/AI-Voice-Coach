@@ -6,6 +6,7 @@ import { CoachingOptions } from '@/services/Options';
 import { useConvex } from 'convex/react'
 import moment from 'moment';
 import Image from 'next/image';
+import Link from 'next/link';
 import React, { useContext, useEffect, useState } from 'react'
 
 function History() {
@@ -51,7 +52,9 @@ function History() {
                 <h2 className='text-gray-400 text-sm'>{moment(item._creationTime).fromNow()}</h2>
               </div>
             </div>
-            <Button variant='outline' className='invisible group-hover:visible'>View Notes</Button>
+            <Link href={'/view-summery/'+item._id}>
+              <Button variant='outline' className='invisible group-hover:visible cursor-pointer'>View Notes</Button>
+            </Link>
           </div>
         ))}
       </div>
