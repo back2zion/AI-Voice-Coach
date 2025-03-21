@@ -10,14 +10,16 @@ import { Loader2Icon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useContext, useEffect, useRef, useState } from 'react'
 import ChatBox from './_components/ChatBox';
 import { toast } from 'sonner';
+import { UserContext } from '@/app/_context/UserContext';
 const RecordRTC = dynamic(() => import('recordrtc'), { ssr: false})
 // import RecordRTC from 'recordrtc';
 
 function DiscussionRoom() {
     const { roomid } = useParams();
+    const {userData,setUserData} = useContext(UserContext);
     const DiscussionRoomData = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid });
     const [expert, setExpert] = useState();
     const [enableMic, setEnableMic] = useState(false);
@@ -30,6 +32,7 @@ function DiscussionRoom() {
     const [audioUrl,setAudioUrl]=useState();
     const [enableFeedbackNotes,setEnableFeedbackNotes] = useState(false);
     const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
+    const updateUserToken=useMutation(api.users.updateUserToken)
     let silenceTimeout;
     let waitForPause;
     let texts = {};
@@ -60,18 +63,10 @@ function DiscussionRoom() {
                     role:'user',
                     content:transcript.text
                 }]);
-
-                // Calling AI text Model to Get Response
-                const lastTwoMsg=conversation.slice(-2);
-                const aiResp=await AIModel(DiscussionRoomData.topic,
-                    DiscussionRoomData.coachingOption,
-                    lastTwoMsg
-                );
-                console.log(aiResp);
-                setConversation(prev=>[...prev,aiResp])
+                await updateUserTokenMethod(transcript.text);// Update user generated TOKEN
             }
 
-            texts[transcript.audio_start] = transcript.text;
+            texts[transcript.audio_start] = transcript?.text;
             const keys=Object.keys(texts);
             keys.sort((a,b)=>a-b);
 
@@ -145,7 +140,7 @@ function DiscussionRoom() {
 
     useEffect(() => {
         async function fetchData() {
-            if (conversation[conversation.length - 1].role == 'user'){
+            if (conversation[conversation.length - 1]?.role == 'user'){
                 // Calling AI text Model to Get Response
                 const lastTwoMsg = conversation.slice(-8);
                 const aiResp = await AIModel(
@@ -156,11 +151,16 @@ function DiscussionRoom() {
                 const url=await ConvertTextToSpeech(aiResp.content,DiscussionRoomData.expertName);
                 console.log(url);
                 setAudioUrl(url);
-                setConversation(prev => [...prev, aiResp])
+                setConversation(prev => [...prev, aiResp]);
+                await updateUserTokenMethod(aiResp.content); // Update AI generated TOKEN
             }
             
         }
-        fetchData()
+        waitForPause = setTimeout(()=>{
+            console.log('Wait...')
+            fetchData()
+        }, 500)
+        console.log(conversation)
     }, [conversation])
 
     const disconnect = async(e) => {
@@ -202,6 +202,19 @@ function DiscussionRoom() {
             setLoading(false);
             setEnableFeedbackNotes(true);
         }
+    }
+
+    const updateUserTokenMethod=async(text)=>{
+        const tokenCount=text.trim()?text.trim().split(/\s+/).length:0
+        const result = await updateUserToken({
+            id:userData._id,
+            credits:Number(userData.credits)-Number(tokenCount)
+        })
+
+        setUserData(prev=>({
+            ...prev,
+            credits:Number(userData.credits)-Number(tokenCount)
+        }))
     }
     
     // Helper function to clean up resources
