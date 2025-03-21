@@ -5,6 +5,7 @@ import { useMutation } from 'convex/react';
 import { LoaderCircle } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useState } from 'react'
+import { toast } from 'sonner';
 
 function ChatBox({conversation,enableFeedbackNotes, coachingOption}) {
 

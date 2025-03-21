@@ -14,6 +14,7 @@ export default defineSchema({
         topic:v.string(),
         expertName:v.string(),
         conversation:v.optional(v.any()),
-        summery:v.optional(v.any())
+        summery:v.optional(v.any()),
+        uid:v.optional(v.id('users'))
     })
 });
