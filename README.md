@@ -147,7 +147,7 @@ If you have questions or need support, please open an issue in this repository o
 
 ## Live Demo
 
-🚀 **Live Demo:** [https://ai-voice-coach.vercel.app](https://ai-voice-coach.vercel.app) *(Update with your actual Vercel URL)*
+🚀 **Live Demo:** [https://ai-voice-coach-lime.vercel.app](https://ai-voice-coach-lime.vercel.app)
 
 ---
 
