@@ -1,11 +1,11 @@
 "use client"
 import { Button } from '@/components/ui/button';
-import { api } from '@/convex/_generated/api';
+// import { api } from '@/convex/_generated/api';
 import { AIModel, ConvertTextToSpeech, getToken } from '@/services/GlobalServices';
 import { CoachingExpert } from '@/services/Options';
-import { UserButton } from '@stackframe/stack';
-import { RealtimeTranscriber } from 'assemblyai';
-import { useMutation, useQuery } from 'convex/react';
+import { UserButton } from '@/components/UserButton';
+// Using browser's Web Speech API instead of AssemblyAI
+// import { useMutation, useQuery } from 'convex/react';
 import { Loader2Icon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -14,13 +14,57 @@ import React, { useContext, useEffect, useRef, useState } from 'react'
 import ChatBox from './_components/ChatBox';
 import { toast } from 'sonner';
 import { UserContext } from '@/app/_context/UserContext';
-const RecordRTC = dynamic(() => import('recordrtc'), { ssr: false})
-// import RecordRTC from 'recordrtc';
+import { useTranslation } from '@/hooks/useTranslation';
+import { db } from '@/lib/supabase';
+// Using browser's Web Speech API for voice recognition
 
 function DiscussionRoom() {
     const { roomid } = useParams();
     const {userData,setUserData} = useContext(UserContext);
-    const DiscussionRoomData = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid });
+    const { t } = useTranslation();
+    // Mock discussion room data for local development
+    const [DiscussionRoomData, setDiscussionRoomData] = useState(null);
+    
+    useEffect(() => {
+        // Get room data from database
+        const fetchRoomData = async () => {
+            try {
+                const roomData = await db.getDiscussionRoom(roomid);
+                if (roomData) {
+                    setDiscussionRoomData({
+                        _id: roomData.id,
+                        topic: roomData.topic,
+                        coachingOption: roomData.coaching_option,
+                        expertName: roomData.expert_name,
+                        _creationTime: new Date(roomData.created_at).getTime()
+                    });
+                } else {
+                    // Fallback data
+                    setDiscussionRoomData({
+                        _id: roomid,
+                        topic: '기본 주제',
+                        coachingOption: 'Topic Base Lecture',
+                        expertName: 'Joanna',
+                        _creationTime: Date.now()
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching room data:', error);
+                // Fallback data
+                setDiscussionRoomData({
+                    _id: roomid,
+                    topic: '기본 주제',
+                    coachingOption: 'Topic Base Lecture',
+                    expertName: 'Joanna',
+                    _creationTime: Date.now()
+                });
+            }
+        };
+
+        if (roomid) {
+            fetchRoomData();
+        }
+    }, [roomid]);
     const [expert, setExpert] = useState();
     const [enableMic, setEnableMic] = useState(false);
     const recorder = useRef(null);
@@ -31,8 +75,8 @@ function DiscussionRoom() {
     const [loading,setLoading] = useState(false);
     const [audioUrl,setAudioUrl]=useState();
     const [enableFeedbackNotes,setEnableFeedbackNotes] = useState(false);
-    const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
-    const updateUserToken=useMutation(api.users.updateUserToken)
+    // const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
+    // const updateUserToken=useMutation(api.users.updateUserToken)
     let silenceTimeout;
     let waitForPause;
     let texts = {};
@@ -47,93 +91,98 @@ function DiscussionRoom() {
 
     const connectToServer = async () => {
         setLoading(true);
-        // Init Assembly AI
-        realtimeTranscriber.current = new RealtimeTranscriber({
-            token: await getToken(),
-            sample_rate:16_000
-        })
-
-        realtimeTranscriber.current.on('transcript',async(transcript)=>{
-            console.log(transcript);
-            let msg = '';
-
-            if (transcript.message_type=='FinalTranscript')
-            {
-                setConversation(prev=>[...prev,{
-                    role:'user',
-                    content:transcript.text
-                }]);
-                await updateUserTokenMethod(transcript.text);// Update user generated TOKEN
+        
+        try {
+            // First request microphone permission
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            stream.getTracks().forEach(track => track.stop()); // Stop the stream after permission check
+            
+            // Use browser's Web Speech API
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                realtimeTranscriber.current = new SpeechRecognition();
+                
+                realtimeTranscriber.current.continuous = true;
+                realtimeTranscriber.current.interimResults = true;
+                realtimeTranscriber.current.lang = 'en-US';
+                
+                realtimeTranscriber.current.onresult = async (event) => {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript;
+                        } else {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    if (finalTranscript) {
+                        setConversation(prev=>[...prev,{
+                            role:'user',
+                            content:finalTranscript
+                        }]);
+                        await updateUserTokenMethod(finalTranscript);// Update user generated TOKEN
+                        setTranscribe('');
+                    } else {
+                        setTranscribe(interimTranscript);
+                    }
+                };
+                
+                realtimeTranscriber.current.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    setLoading(false);
+                    setEnableMic(false);
+                    
+                    switch (event.error) {
+                        case 'not-allowed':
+                            toast.error(t('Microphone access denied. Please allow microphone permission and try again.'));
+                            break;
+                        case 'no-speech':
+                            toast.error(t('No speech detected. Please try speaking again.'));
+                            break;
+                        case 'audio-capture':
+                            toast.error(t('Microphone not available. Please check your microphone connection.'));
+                            break;
+                        case 'network':
+                            toast.error(t('Network error occurred. Please check your internet connection.'));
+                            break;
+                        default:
+                            toast.error(t('Speech recognition error occurred: ') + event.error);
+                    }
+                };
+                
+                realtimeTranscriber.current.onend = () => {
+                    if (enableMic) {
+                        // Restart if mic is still enabled and it ended unexpectedly
+                        setTimeout(() => {
+                            if (realtimeTranscriber.current && enableMic) {
+                                realtimeTranscriber.current.start();
+                            }
+                        }, 1000);
+                    }
+                };
+                
+                realtimeTranscriber.current.start();
+                setLoading(false);
+                setEnableMic(true);
+                toast(t('Connected...'));
+            } else {
+                setLoading(false);
+                toast.error(t('Speech recognition not supported in this browser'));
             }
-
-            texts[transcript.audio_start] = transcript?.text;
-            const keys=Object.keys(texts);
-            keys.sort((a,b)=>a-b);
-
-            for (const key of keys){
-                if (texts[key]){
-                    msg+=`${texts[key]}`
-                }
-            }
-
-            setTranscribe(msg);
-        })
-
-        await realtimeTranscriber.current.connect();
-        setLoading(false);
-        setEnableMic(true);
-        toast('Connected...')
-        if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-            try {
-                // First, get the media stream
-                const mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                stream.current = mediaStream;
-                
-                // Dynamically import RecordRTC
-                const RecordRTCModule = await import('recordrtc');
-                const RecordRTC = RecordRTCModule.default;
-                
-                if (!RecordRTC) {
-                    throw new Error("Failed to load RecordRTC");
-                }
-                
-                // Create the recorder instance
-                recorder.current = new RecordRTC(mediaStream, {
-                    type: 'audio',
-                    mimeType: 'audio/webm;codecs=pcm',
-                    recorderType: RecordRTC.StereoAudioRecorder,
-                    timeSlice: 250,
-                    desiredSampRate: 16000,
-                    numberOfAudioChannels: 1,
-                    bufferSize: 4096,
-                    audioBitsPerSecond: 128000,
-                    ondataavailable: async (blob) => {
-                        if (!realtimeTranscriber.current) return;                        // Reset the silence detection timer on audio input
-                        clearTimeout(silenceTimeout);
-                        const buffer = await blob.arrayBuffer();
-                        console.log(buffer);
-                        realtimeTranscriber.current.sendAudio(buffer);
-                        // Restart the silence detection timer
-                        silenceTimeout = setTimeout(() => {
-                            console.log("User stopped talking");
-                            // Handle user stopped talking(eg., send the final transcript)
-                        }, 2000);
-                    },
-                });
-                
-                // Start recording
-                recorder.current.startRecording();
-                
-            } catch (err) {
-                console.error("Error setting up recording:", err);
-                setEnableMic(false);
-                
-                // Clean up any partial setup
-                if (stream.current) {
-                    stream.current.getTracks().forEach(track => track.stop());
-                    stream.current = null;
-                }
-                recorder.current = null;
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            setLoading(false);
+            
+            if (error.name === 'NotAllowedError') {
+                toast.error(t('Microphone access denied. Please allow microphone permission in your browser settings.'));
+            } else if (error.name === 'NotFoundError') {
+                toast.error(t('No microphone found. Please connect a microphone and try again.'));
+            } else {
+                toast.error(t('Failed to access microphone: ') + error.message);
             }
         }
     }
@@ -167,35 +216,20 @@ function DiscussionRoom() {
         e.preventDefault();
         setLoading(true);
         try {
-            // Fix: Check if realtimeTranscriber exists and properly close it
+            // Stop Web Speech API
             if (realtimeTranscriber.current) {
                 try {
-                    // https://www.assemblyai.com/docs/getting-started/real-time-transcription
-                    await realtimeTranscriber.current.close();
+                    realtimeTranscriber.current.stop();
                 } catch (err) {
-                    console.error("Error disconnecting from AssemblyAI:", err);
+                    console.error("Error stopping speech recognition:", err);
                 }
             }
             
-            if (recorder.current) {
-                try {
-                    recorder.current.stopRecording(() => {
-                        console.log("Recording stopped");
-                        cleanupResources();
-                    });
-                } catch (err) {
-                    console.error("Error stopping recording:", err);
-                    cleanupResources();
-                }
-            } else {
-                cleanupResources();
-            }
+            cleanupResources();
             setEnableMic(false);
-            toast('Disconnected!')
-            await UpdateConversation({
-                id: DiscussionRoomData._id,
-                conversation: conversation
-            });
+            toast(t('Disconnected!'))
+            // Update conversation using Supabase
+            await db.updateRoomConversation(DiscussionRoomData._id, conversation);
         } catch (err) {
             console.error("Error updating conversation:", err);
         } finally {
@@ -206,15 +240,18 @@ function DiscussionRoom() {
 
     const updateUserTokenMethod=async(text)=>{
         const tokenCount=text.trim()?text.trim().split(/\s+/).length:0
-        const result = await updateUserToken({
-            id:userData._id,
-            credits:Number(userData.credits)-Number(tokenCount)
-        })
-
-        setUserData(prev=>({
-            ...prev,
-            credits:Number(userData.credits)-Number(tokenCount)
-        }))
+        const newCredits = Number(userData.credits || userData.tokens || 1000) - Number(tokenCount);
+        
+        // Update user credits using Supabase
+        const result = await db.updateUserCredits(userData.id || userData._id, newCredits);
+        
+        if (result) {
+            setUserData(prev=>({
+                ...prev,
+                credits: newCredits,
+                tokens: newCredits // backward compatibility
+            }));
+        }
     }
     
     // Helper function to clean up resources
@@ -251,11 +288,11 @@ function DiscussionRoom() {
                     </div>
                     <div className='mt-5 flex justify-center items-center cursor-pointer'>
                         {!enableMic ?
-                            <Button className='cursor-pointer' onClick={connectToServer} disabled={loading}> {loading&&<Loader2Icon className='animate-spin' />} Connect</Button>
+                            <Button className='cursor-pointer' onClick={connectToServer} disabled={loading}> {loading&&<Loader2Icon className='animate-spin' />} {t('Connect')}</Button>
                             :
                             <Button className='cursor-pointer' variant='destructive' onClick={disconnect} disabled={loading}>
                                 {loading&&<Loader2Icon className='animate-spin' />}
-                                Disconnect</Button>
+                                {t('Disconnect')}</Button>
                         }
                     </div>
                 </div>

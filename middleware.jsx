@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import { stackServerApp } from "./stack";
 
 export async function middleware(request) {
-    const user = await stackServerApp.getUser();
-    if (!user) {
-        return NextResponse.redirect(new URL('/handler/sign-in', request.url));
-    }
+    // 로컬 개발 환경에서는 인증 체크를 건너뜀
     return NextResponse.next();
 }
 
 export const config = {
-  // You can add your own route protection logic here
-  // Make sure not to protect the root URL, as it would prevent users from accessing static Next.js files or Stack's /handler path
-  matcher: '/dashboard/:path*',
+  // 로컬 개발에서는 미들웨어 비활성화
+  matcher: [],
 };
   

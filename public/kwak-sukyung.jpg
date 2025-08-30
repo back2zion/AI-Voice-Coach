@@ -1,0 +1,10 @@
+{
+  "error": true,
+  "url": "https://avatar-placeholder.iran.liara.run/public/44?name=%C3%AA%C2%B3%C2%BD%C3%AC%C2%88%C2%98%C3%AA%C2%B2%C2%BD",
+  "statusCode": 404,
+  "statusMessage": "Page not found: /public/44?name=%C3%AA%C2%B3%C2%BD%C3%AC%C2%88%C2%98%C3%AA%C2%B2%C2%BD",
+  "message": "Page not found: /public/44?name=%C3%AA%C2%B3%C2%BD%C3%AC%C2%88%C2%98%C3%AA%C2%B2%C2%BD",
+  "data": {
+    "path": "/public/44?name=%C3%AA%C2%B3%C2%BD%C3%AC%C2%88%C2%98%C3%AA%C2%B2%C2%BD"
+  }
+}

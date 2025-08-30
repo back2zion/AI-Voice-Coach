@@ -36,6 +36,14 @@ export const CoachingOptions = [
         summeryPrompt: 'As per conversation generate a notes depends in well structure ateast 200 words',
         abstract: '/ab5.png'
 
+    },
+    {
+        name: 'Voice Recording',
+        icon: '/window.svg',
+        prompt: 'You are an AI voice coach helping users with advanced voice recording and analysis for {user_topic}. Provide technical guidance on recording quality, voice techniques, and audio improvement. Keep responses under 120 characters.',
+        summeryPrompt: 'Generate detailed feedback on the user\'s voice recording session including technical aspects and improvement suggestions in at least 200 words',
+        abstract: '/ab1.png',
+        isAdvanced: true
     }
 ];
 
@@ -43,18 +51,21 @@ export const CoachingOptions = [
 
 export const CoachingExpert = [
     {
-        name: 'Joanna',
-        avatar: '/Rahul.jpg',
+        name: '곽두일',
+        avatar: '/window.svg', // 개발자/기술 전문가
+        avatarType: 'icon',
         pro: false
     },
     {
-        name: 'Justin',
-        avatar: '/Priyansh.jpg',
+        name: '곽문이',
+        avatar: '/globe.svg', // 글로벌/언어 전문가
+        avatarType: 'icon',
         pro: false
     },
     {
-        name: 'Matthew',
-        avatar: '/Ayush.jpg',
+        name: '곽수경',
+        avatar: '/file.svg', // 문서/학습 전문가
+        avatarType: 'icon',
         pro: false
     },
     // {

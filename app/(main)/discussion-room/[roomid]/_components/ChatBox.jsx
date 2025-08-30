@@ -1,33 +1,37 @@
 import { Button } from '@/components/ui/button'
-import { api } from '@/convex/_generated/api';
+// import { api } from '@/convex/_generated/api';
 import { AIModelToGenerateFeedbackAndNotes } from '@/services/GlobalServices'
-import { useMutation } from 'convex/react';
+// import { useMutation } from 'convex/react';
+import { db } from '@/lib/supabase';
 import { LoaderCircle } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useState } from 'react'
 import { toast } from 'sonner';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function ChatBox({conversation,enableFeedbackNotes, coachingOption}) {
 
     const [loading,setLoading]=useState(false);
-    const updateSummary = useMutation(api.DiscussionRoom.UpdateSummery)
+    // const updateSummary = useMutation(api.DiscussionRoom.UpdateSummery)
     const {roomid}=useParams();
+    const { t } = useTranslation();
+    
     const GenerateFeedbackNotes=async()=>{
         setLoading(true);
         try{
             const result = await AIModelToGenerateFeedbackAndNotes(coachingOption,conversation);
             console.log(result.content);
-            await updateSummary({
-                id:roomid,
-                summery:result.content
-            })
+            
+            // Update summary using Supabase
+            await db.updateRoomSummary(roomid, result.content);
+            
             setLoading(false);
-            toast('Feedback/Notes Saved!')
+            toast(t('Feedback/Notes Saved!'))
         }
         catch(e)
         {
             setLoading(false);
-            toast('Internal server error, Try again!')
+            toast(t('Internal server error, Try again!'))
         }
     }
 
@@ -51,7 +55,7 @@ function ChatBox({conversation,enableFeedbackNotes, coachingOption}) {
             {!enableFeedbackNotes? <h2 className='mt-4 text-gray-500 text-sm'></h2>
             :<Button onClick={GenerateFeedbackNotes} disabled={loading} className='mt-7 w-full'>
                 {loading&&<LoaderCircle className='animate-spin' />}
-                Generate Feedback/Notes</Button>}
+                {t('Generate Feedback/Notes')}</Button>}
         </div>
     )
 }

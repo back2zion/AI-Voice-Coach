@@ -1,17 +1,44 @@
 'use client'
-import { api } from '@/convex/_generated/api';
+// import { api } from '@/convex/_generated/api';
 import { CoachingOptions } from '@/services/Options';
-import { useQuery } from 'convex/react';
+// import { useQuery } from 'convex/react';
+import { db } from '@/lib/supabase';
 import moment from 'moment';
 import Image from 'next/image';
 import { useParams } from 'next/navigation'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import ChatBox from '../../discussion-room/[roomid]/_components/ChatBox';
 import SummeryBox from '../_components/SummeryBox';
 
 function ViewSummery() {
     const {roomid}=useParams();
-    const DiscussionRoomData = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid });
+    const [DiscussionRoomData, setDiscussionRoomData] = useState(null);
+    
+    useEffect(() => {
+        const fetchRoomData = async () => {
+            try {
+                const roomData = await db.getDiscussionRoom(roomid);
+                if (roomData) {
+                    setDiscussionRoomData({
+                        _id: roomData.id,
+                        topic: roomData.topic,
+                        coachingOption: roomData.coaching_option,
+                        expertName: roomData.expert_name,
+                        conversation: roomData.conversation,
+                        summery: roomData.summary,
+                        _creationTime: new Date(roomData.created_at).getTime()
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching room data:', error);
+            }
+        };
+
+        if (roomid) {
+            fetchRoomData();
+        }
+    }, [roomid]);
+    
     console.log(DiscussionRoomData);
 
     const GetAbstractImages = (option)=>{

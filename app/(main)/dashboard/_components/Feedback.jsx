@@ -1,29 +1,45 @@
 'use client'
 import { UserContext } from '@/app/_context/UserContext';
 import { Button } from '@/components/ui/button';
-import { api } from '@/convex/_generated/api';
+// import { api } from '@/convex/_generated/api';
 import { CoachingOptions } from '@/services/Options';
-import { useConvex } from 'convex/react'
+// import { useConvex } from 'convex/react'
+import { db } from '@/lib/supabase';
 import moment from 'moment';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useContext, useEffect, useState } from 'react'
+import { useTranslation } from '@/hooks/useTranslation'
 
 
 function Feedback() {
-  const convex=useConvex();
   const {userData}=useContext(UserContext);
+  const { t } = useTranslation();
   const [discussionRoomList,setDiscussionRoomList]=useState([]);
 
   useEffect(()=>{
     userData&&GetDiscussionRooms();
   },[userData])
+  
   const GetDiscussionRooms=async()=>{
-    const result = await convex.query(api.DiscussionRoom.GetAllDiscussionRoom,{
-      uid:userData?._id
-    });
-    console.log(result);
-    setDiscussionRoomList(result);
+    try {
+      const result = await db.getUserDiscussionRooms(userData?.id || userData?._id);
+      console.log('Feedback rooms:', result);
+      
+      // Transform data to match expected format
+      const transformedRooms = result.map(room => ({
+        _id: room.id,
+        topic: room.topic,
+        coachingOption: room.coaching_option,
+        expertName: room.expert_name,
+        _creationTime: new Date(room.created_at).getTime()
+      }));
+      
+      setDiscussionRoomList(transformedRooms);
+    } catch (error) {
+      console.error('Error fetching discussion rooms:', error);
+      setDiscussionRoomList([]);
+    }
   }
 
   const GetAbstractImages = (option)=>{
@@ -34,8 +50,8 @@ function Feedback() {
 
   return (
     <div>
-      <h2 className='font-bold text-xl'>Feedback</h2>
-      {discussionRoomList?.length==0&&<h2 className='text-gray-400'>You don't have any previous feedback</h2>}
+      <h2 className='font-bold text-xl'>{t('Feedback')}</h2>
+      {discussionRoomList?.length==0&&<h2 className='text-gray-400'>{t("You don't have any previous feedback")}</h2>}
       <div className='mt-5'>
         {discussionRoomList.map((item, index)=> (item.coachingOption=='Mock Interview'||item.coachingOption=='Ques Ans Prep')&&
           (
@@ -48,12 +64,15 @@ function Feedback() {
                 />
                 <div>
                   <h2 className='font-bold'>{item.topic}</h2>
-                  <h2 className='text-gray-400'>{item.coachingOption}</h2>
+                  <h2 className='text-gray-400'>{t(item.coachingOption)}</h2>
                   <h2 className='text-gray-400 text-sm'>{moment(item._creationTime).fromNow()}</h2>
                 </div>
               </div>
               <Link href={'/view-summery/'+item._id}>
-                <Button variant='outline' className='invisible group-hover:visible cursor-pointer'>View Feedback</Button>
+                <Button variant='outline' className='invisible group-hover:visible cursor-pointer flex items-center gap-2'>
+                  <Image src='/file.svg' alt='file' width={16} height={16} />
+                  {t('View Feedback')}
+                </Button>
               </Link>
             </div>
           ))}

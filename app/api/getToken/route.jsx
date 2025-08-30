@@ -1,8 +1,11 @@
-import { AssemblyAI } from "assemblyai";
 import { NextResponse } from "next/server";
 
-const assemblyAi=new AssemblyAI({apiKey:process.env.ASSEMBLY_API_KEY});
+// Mock token for local development
 export async function GET(req){
-    const token=await assemblyAi.realtime.createTemporaryToken({expires_in:3600});
-    return NextResponse.json(token);
+    // Return a mock token for local development
+    const mockToken = {
+        token: "mock-local-token-" + Date.now(),
+        expires_in: 3600
+    };
+    return NextResponse.json(mockToken);
 }

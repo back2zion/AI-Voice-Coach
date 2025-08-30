@@ -2,23 +2,25 @@
 import { BlurFade } from '@/components/magicui/blur-fade';
 import { Button } from '@/components/ui/button';
 import { CoachingOptions } from '@/services/Options';
-import { useUser } from '@stackframe/stack'
+import { useUser } from '@/hooks/useAuth'
 import Image from 'next/image';
 import React from 'react'
 import UserInputDialog from './UserInputDialog';
 import ProfileDailog from './ProfileDailog';
+import { useTranslation } from '@/hooks/useTranslation';
 
 function FeatureAssistants() {
     const user = useUser();
+    const { t } = useTranslation();
     return (
         <div>
             <div className='flex justify-between items-center'>
                 <div>
-                    <h2 className='font-medium text-gray-500'>My Workspace</h2>
-                    <h2 className='text-3xl font-bold'>Welcome back, {user?.displayName}</h2>
+                    <h2 className='font-medium text-gray-500'>{t("My Workspace")}</h2>
+                    <h2 className='text-3xl font-bold'>{t("Welcome back")}, {t(user?.displayName || "Local User")}</h2>
                 </div>
                 <ProfileDailog>
-                    <Button className={'cursor-pointer'}>Profile</Button>
+                    <Button className={'cursor-pointer'}>{t("Profile")}</Button>
                 </ProfileDailog>
             </div>
 
@@ -33,7 +35,7 @@ function FeatureAssistants() {
                                         height={150}
                                         className='h-[70px] w-[70px] hover:rotate-12 cursor-pointer'
                                     />
-                                    <h2 className='mt-2'>{option.name}</h2>
+                                    <h2 className='mt-2'>{t(option.name)}</h2>
                                 </div>
                             </UserInputDialog>
                         </div>
