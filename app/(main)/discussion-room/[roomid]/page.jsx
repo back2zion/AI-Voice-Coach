@@ -6,7 +6,7 @@ import { CoachingExpert } from '@/services/Options';
 import { UserButton } from '@/components/UserButton';
 // Using browser's Web Speech API instead of AssemblyAI
 // import { useMutation, useQuery } from 'convex/react';
-import { Loader2Icon } from 'lucide-react';
+import { Loader2Icon, Mic, MicOff } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
@@ -75,6 +75,8 @@ function DiscussionRoom() {
     const [loading,setLoading] = useState(false);
     const [audioUrl,setAudioUrl]=useState();
     const [enableFeedbackNotes,setEnableFeedbackNotes] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [micStatus, setMicStatus] = useState('inactive'); // inactive, active, listening
     // const UpdateConversation=useMutation(api.DiscussionRoom.UpdateConversation);
     // const updateUserToken=useMutation(api.users.updateUserToken)
     let silenceTimeout;
@@ -120,6 +122,8 @@ function DiscussionRoom() {
                     }
                     
                     if (finalTranscript) {
+                        setMicStatus('active');
+                        setIsListening(false);
                         setConversation(prev=>[...prev,{
                             role:'user',
                             content:finalTranscript
@@ -127,6 +131,8 @@ function DiscussionRoom() {
                         await updateUserTokenMethod(finalTranscript);// Update user generated TOKEN
                         setTranscribe('');
                     } else {
+                        setMicStatus('listening');
+                        setIsListening(true);
                         setTranscribe(interimTranscript);
                     }
                 };
@@ -135,6 +141,8 @@ function DiscussionRoom() {
                     console.error('Speech recognition error:', event.error);
                     setLoading(false);
                     setEnableMic(false);
+                    setMicStatus('inactive');
+                    setIsListening(false);
                     
                     switch (event.error) {
                         case 'not-allowed':
@@ -154,6 +162,12 @@ function DiscussionRoom() {
                     }
                 };
                 
+                realtimeTranscriber.current.onstart = () => {
+                    setMicStatus('active');
+                    setIsListening(false);
+                    console.log('Speech recognition started');
+                };
+                
                 realtimeTranscriber.current.onend = () => {
                     if (enableMic) {
                         // Restart if mic is still enabled and it ended unexpectedly
@@ -162,12 +176,16 @@ function DiscussionRoom() {
                                 realtimeTranscriber.current.start();
                             }
                         }, 1000);
+                    } else {
+                        setMicStatus('inactive');
+                        setIsListening(false);
                     }
                 };
                 
                 realtimeTranscriber.current.start();
                 setLoading(false);
                 setEnableMic(true);
+                setMicStatus('active');
                 toast(t('Connected...'));
             } else {
                 setLoading(false);
@@ -227,6 +245,8 @@ function DiscussionRoom() {
             
             cleanupResources();
             setEnableMic(false);
+            setMicStatus('inactive');
+            setIsListening(false);
             toast(t('Disconnected!'))
             // Update conversation using Supabase
             await db.updateRoomConversation(DiscussionRoomData._id, conversation);
@@ -282,6 +302,22 @@ function DiscussionRoom() {
                         <h2 className='text-gray-500'>{expert?.name}</h2>
 
                         <audio src={audioUrl} type='audio/mp3' autoPlay />
+                        
+                        {/* 마이크 상태 표시 */}
+                        {enableMic && (
+                            <div className='absolute top-10 right-10 flex items-center gap-2 px-4 py-2 bg-black/20 rounded-full text-white'>
+                                {micStatus === 'listening' ? (
+                                    <Mic className={`w-5 h-5 ${isListening ? 'text-red-500 animate-pulse' : 'text-green-500'}`} />
+                                ) : (
+                                    <Mic className='w-5 h-5 text-green-500' />
+                                )}
+                                <span className='text-sm'>
+                                    {micStatus === 'listening' ? '듣고 있음...' : 
+                                     micStatus === 'active' ? '연결됨' : '대기 중'}
+                                </span>
+                            </div>
+                        )}
+                        
                         <div className='p-5 bg-gray-200 px-10 rounded-lg absolute bottom-10 right-10'>
                             <UserButton />
                         </div>
@@ -304,9 +340,16 @@ function DiscussionRoom() {
                 </div>
             </div>
 
-            <div>
-                <h2>{transcribe}</h2>
-            </div>
+            {/* 실시간 전사 표시 */}
+            {transcribe && (
+                <div className='mt-5 p-4 bg-blue-50 rounded-lg border border-blue-200'>
+                    <div className='flex items-center gap-2 mb-2'>
+                        <Mic className='w-4 h-4 text-blue-500 animate-pulse' />
+                        <span className='text-sm text-blue-700 font-medium'>말하고 있는 중...</span>
+                    </div>
+                    <p className='text-gray-800 italic'>"{transcribe}"</p>
+                </div>
+            )}
         </div>
     )
 }
