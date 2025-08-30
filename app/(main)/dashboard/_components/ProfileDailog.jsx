@@ -8,15 +8,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import Credits from './Credits'
+import { useTranslation } from '@/hooks/useTranslation'
   
 
 function ProfileDailog({children}) {
+    const { t } = useTranslation();
+    
     return (
         <Dialog>
     <DialogTrigger asChild>{children}</DialogTrigger>
     <DialogContent>
         <DialogHeader>
-            <DialogTitle>Are you absolutely sure?</DialogTitle>
+            <DialogTitle>{t('User Profile')}</DialogTitle>
             <DialogDescription asChild>
                 <Credits />
             </DialogDescription>
