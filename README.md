@@ -1,6 +1,6 @@
 # AI Voice Coach
 
-An intelligent voice coaching platform built with Next.js, Supabase, and AWS Polly. AI Voice Coach leverages browser-based speech recognition and AI-generated feedback to help users improve their skills by providing tailored voice interactions and personalized notes.
+An intelligent voice coaching platform built with Next.js and Supabase. AI Voice Coach leverages browser-based speech recognition and AI-generated feedback to help users improve their skills by providing tailored voice interactions and personalized notes.
 
 ![Project Status](https://img.shields.io/badge/status-production--ready-success.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
@@ -14,7 +14,7 @@ An intelligent voice coaching platform built with Next.js, Supabase, and AWS Pol
 AI Voice Coach empowers users with an interactive voice-assisted experience that includes:
 - **Real-time Transcription:** Uses Web Speech API for accurate, real-time speech-to-text conversion.
 - **Personalized Feedback:** AI generates concise feedback and comprehensive notes based on user conversations.
-- **Voice Synthesis:** AWS Polly converts AI responses into natural-sounding speech for seamless coaching sessions.
+- **Voice Synthesis:** Browser's Web Speech API (speechSynthesis) converts AI responses into natural-sounding speech with multiple language support.
 
 ## Features
 
@@ -35,7 +35,7 @@ AI Voice Coach empowers users with an interactive voice-assisted experience that
 
 - **Backend:**  
   - [Supabase](https://supabase.com/) for database, authentication, and real-time functionality  
-  - [AWS Polly](https://aws.amazon.com/polly/) for text-to-speech synthesis  
+  - Web Speech API (speechSynthesis) for text-to-speech synthesis  
 
 - **Other Libraries:**  
   - [OpenRouter](https://openrouter.ai/) powered OpenAI model for generating feedback  
@@ -61,10 +61,6 @@ AI Voice Coach empowers users with an interactive voice-assisted experience that
 
    # OpenRouter AI Configuration
    NEXT_PUBLIC_AI_OPENROUTER=your_openrouter_api_key
-
-   # AWS Polly Configuration
-   NEXT_PUBLIC_AWS_ACCESS_KEY_ID=your_aws_access_key
-   NEXT_PUBLIC_AWS_SECRET_KEY=your_aws_secret_key
    ```
 
 3. **Set up Supabase Database**
@@ -114,8 +110,6 @@ Make sure to add these environment variables in your Vercel project settings:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_AI_OPENROUTER`
-- `NEXT_PUBLIC_AWS_ACCESS_KEY_ID`
-- `NEXT_PUBLIC_AWS_SECRET_KEY`
 
 ### Production Build (Local)
 ```bash
